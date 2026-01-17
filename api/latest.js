@@ -15,7 +15,7 @@ function validateTelegramInitData(initData, botToken) {
   delete data.hash;
 
   const keys = Object.keys(data).sort();
-  const dataCheckString = keys.map(k => `${k}=${data[k]}`).join("\n");
+  const dataCheckString = keys.map((k) => `${k}=${data[k]}`).join("\n");
 
   const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
   const computed = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
@@ -28,27 +28,36 @@ function validateTelegramInitData(initData, botToken) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).send("Method not allowed");
-  const { initData } = req.body || {};
-  if (!initData) return res.status(400).send("Missing initData");
+  try {
+    if (req.method !== "POST") return res.status(405).send("Method not allowed");
+    const { initData } = req.body || {};
+    if (!initData) return res.status(400).send("Missing initData");
 
-  const BOT_TOKEN = process.env.BOT_TOKEN;
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!BOT_TOKEN  !SUPABASE_URL  !SUPABASE_SERVICE_ROLE_KEY) return res.status(500).send("Server env not configured");
+    const BOT_TOKEN = process.env.BOT_TOKEN;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const v = validateTelegramInitData(initData, BOT_TOKEN);
-  if (!v.ok) return res.status(401).send(v.reason);
+    if (!BOT_TOKEN  !SUPABASE_URL  !SUPABASE_SERVICE_ROLE_KEY) {
+      return res
+        .status(500)
+        .send("Server env not configured (BOT_TOKEN / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)");
+    }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const v = validateTelegramInitData(initData, BOT_TOKEN);
+    if (!v.ok) return res.status(401).send(v.reason);
 
-  const { data, error } = await supabase
-    .from("checkins")
-    .select("created_at,soma,insight")
-    .eq("telegram_user_id", String(v.user.id))
-    .order("created_at", { ascending: false })
-    .limit(1);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  if (error) return res.status(500).send(error.message);
-  return res.status(200).json({ latest: data?.[0] || null });
+    const { data, error } = await supabase
+      .from("checkins")
+      .select("created_at,soma,insight")
+      .eq("telegram_user_id", String(v.user.id))
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (error) return res.status(500).send("Supabase: " + error.message);
+    return res.status(200).json({ latest: data?.[0] || null });
+  } catch (err) {
+    return res.status(500).send(err?.stack || String(err));
+  }
 }
