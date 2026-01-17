@@ -15,7 +15,7 @@ function validateTelegramInitData(initData, botToken) {
   delete data.hash;
 
   const keys = Object.keys(data).sort();
-  const dataCheckString = keys.map(k => `${k}=${data[k]}`).join("\n");
+  const dataCheckString = keys.map((k) => `${k}=${data[k]}`).join("\n");
 
   const secretKey = crypto.createHmac("sha256", "WebAppData").update(botToken).digest();
   const computed = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
@@ -28,34 +28,43 @@ function validateTelegramInitData(initData, botToken) {
 }
 
 export default async function handler(req, res) {
-  if (req.method !== "POST") return res.status(405).send("Method not allowed");
+  try {
+    if (req.method !== "POST") return res.status(405).send("Method not allowed");
 
-  const { initData, checkin } = req.body || {};
-  if (!initData || !checkin) return res.status(400).send("Missing initData/checkin");
+    const { initData, checkin } = req.body || {};
+    if (!initData || !checkin) return res.status(400).send("Missing initData/checkin");
 
-  const BOT_TOKEN = process.env.BOT_TOKEN;
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!BOT_TOKEN  !SUPABASE_URL  !SUPABASE_SERVICE_ROLE_KEY) return res.status(500).send("Server env not configured");
+    const BOT_TOKEN = process.env.BOT_TOKEN;
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const v = validateTelegramInitData(initData, BOT_TOKEN);
-  if (!v.ok) return res.status(401).send(v.reason);
+    if (!BOT_TOKEN  !SUPABASE_URL  !SUPABASE_SERVICE_ROLE_KEY) {
+      return res
+        .status(500)
+        .send("Server env not configured (BOT_TOKEN / SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY)");
+    }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const v = validateTelegramInitData(initData, BOT_TOKEN);
+    if (!v.ok) return res.status(401).send(v.reason);
 
-  const row = {
-    telegram_user_id: String(v.user.id),
-    sleep: checkin.sleep,
-    energy: checkin.energy,
-    stress: checkin.stress,
-    activity: checkin.activity,
-    alcohol: !!checkin.alcohol,
-    soma: checkin.soma,
-    insight: "Based on your check-in."
-  };
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { error } = await supabase.from("checkins").insert(row);
-  if (error) return res.status(500).send(error.message);
+    const row = {
+      telegram_user_id: String(v.user.id),
+      sleep: checkin.sleep,
+      energy: checkin.energy,
+      stress: checkin.stress,
+      activity: checkin.activity,
+      alcohol: !!checkin.alcohol,
+      soma: checkin.soma,
+      insight: "Based on your check-in."
+    };
 
-  return res.status(200).send("ok");
+    const { error } = await supabase.from("checkins").insert(row);
+    if (error) return res.status(500).send("Supabase: " + error.message);
+
+    return res.status(200).send("ok");
+  } catch (err) {
+    return res.status(500).send(err?.stack || String(err));
+  }
 }
