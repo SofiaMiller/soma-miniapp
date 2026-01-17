@@ -30,6 +30,7 @@ function validateTelegramInitData(initData, botToken) {
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") return res.status(405).send("Method not allowed");
+
     const { initData } = req.body || {};
     if (!initData) return res.status(400).send("Missing initData");
 
@@ -56,6 +57,7 @@ export default async function handler(req, res) {
       .limit(1);
 
     if (error) return res.status(500).send("Supabase: " + error.message);
+
     return res.status(200).json({ latest: data?.[0] || null });
   } catch (err) {
     return res.status(500).send(err?.stack || String(err));
