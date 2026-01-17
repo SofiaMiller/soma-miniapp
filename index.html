@@ -10,7 +10,17 @@
     .card { border: 1px solid #ddd; border-radius: 12px; padding: 12px; margin: 12px 0; }
     .row { display:flex; gap:12px; flex-wrap:wrap; }
     .q { margin: 12px 0; }
-    button { padding: 10px 12px; border-radius: 10px; border: 1px solid #ccc; background: #fff; }
+    button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.card { position: relative; z-index: 1; }
     .primary { background:#111; color:#fff; border-color:#111; }
     input[type="range"] { width: 100%; }
     .muted { opacity: .7; font-size: 13px; }
@@ -26,7 +36,13 @@
     <div style="font-size:28px; font-weight:700" id="score">—</div>
     <div id="insight" class="muted">Complete a check-in to see your SOMA.</div>
     <div class="row" style="margin-top:10px">
-      <button class="primary" id="openCheckin" onclick="window.__openCheckin && window.__openCheckin()">Check in (30 sec)</button>
+      <button class="primary" id="openCheckin"
+  onclick="
+    document.getElementById('today').style.display='none';
+    document.getElementById('checkin').style.display='block';
+  ">
+  Check in (30 sec)
+</button>
     </div>
   </div>
 
@@ -63,7 +79,13 @@
     </div>
 
     <div class="row">
-      <button id="back">Back</button>
+      <button id="back"
+  onclick="
+    document.getElementById('checkin').style.display='none';
+    document.getElementById('today').style.display='block';
+  ">
+  Back
+</button>
       <button class="primary" id="save">Save check-in</button>
     </div>
     <div class="muted" id="status" style="margin-top:8px;"></div>
@@ -94,12 +116,6 @@ window.__openCheckin = () => {
     r.addEventListener("input", () => v.textContent = r.value);
   };
   ["sleep","energy","stress","activity"].forEach(bindRange);
-
-  document.getElementById("openCheckin").onclick = window.__openCheckin;
-  document.getElementById("back").onclick = () => {
-    checkinEl.style.display = "none";
-    todayEl.style.display = "block";
-  };
 
   function computeSomaLocal({sleep, energy, stress, activity, alcohol}) {
     const stressInv = 6 - stress;
