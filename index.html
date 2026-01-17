@@ -51,32 +51,37 @@
 
     <div class="q">
       <div>Sleep (1–5)</div>
-      <input id="sleep" type="range" min="1" max="5" value="3" />
-      <div class="muted">Value: <span id="sleepV">3</span></div>
-    </div>
+      <input id="sleep" type="range" min="1" max="5" value="3"
+  oninput="document.getElementById('sleepV').innerText=this.value" />
+<div class="muted">Value: <span id="sleepV">3</span></div>
 
     <div class="q">
       <div>Energy (1–5)</div>
-      <input id="energy" type="range" min="1" max="5" value="3" />
-      <div class="muted">Value: <span id="energyV">3</span></div>
-    </div>
+     <input id="energy" type="range" min="1" max="5" value="3"
+  oninput="document.getElementById('energyV').innerText=this.value" />
+<div class="muted">Value: <span id="energyV">3</span></div>
 
     <div class="q">
       <div>Stress (1–5)</div>
-      <input id="stress" type="range" min="1" max="5" value="3" />
-      <div class="muted">Value: <span id="stressV">3</span></div>
-    </div>
+      <input id="stress" type="range" min="1" max="5" value="3"
+  oninput="document.getElementById('stressV').innerText=this.value" />
+<div class="muted">Value: <span id="stressV">3</span></div>
 
     <div class="q">
       <div>Activity (1–5)</div>
-      <input id="activity" type="range" min="1" max="5" value="3" />
-      <div class="muted">Value: <span id="activityV">3</span></div>
-    </div>
+      <input id="activity" type="range" min="1" max="5" value="3"
+  oninput="document.getElementById('activityV').innerText=this.value" />
+<div class="muted">Value: <span id="activityV">3</span></div>
 
     <div class="q">
-      <div>Alcohol today?</div>
-      <label><input id="alcohol" type="checkbox" /> Yes</label>
-    </div>
+  <div>Alcohol today?</div>
+  <label>
+    <input type="radio" name="alcohol" value="yes" /> Yes
+  </label>
+  <label style="margin-left:12px">
+    <input type="radio" name="alcohol" value="no" checked /> No
+  </label>
+</div>
 
     <div class="row">
       <button id="back"
@@ -86,7 +91,51 @@
   ">
   Back
 </button>
-      <button class="primary" id="save">Save check-in</button>
+      <button class="primary"
+  onclick="
+    const checkin = {
+      sleep: +document.getElementById('sleep').value,
+      energy: +document.getElementById('energy').value,
+      stress: +document.getElementById('stress').value,
+      activity: +document.getElementById('activity').value,
+      alcohol: document.querySelector('input[name=alcohol]:checked').value === 'yes'
+    };
+
+    const soma = Math.max(0, Math.min(100, Math.round(
+      (checkin.sleep*20)*0.35 +
+      (checkin.energy*20)*0.30 +
+      ((6-checkin.stress)*20)*0.20 +
+      (checkin.activity*20)*0.15 -
+      (checkin.alcohol ? 10 : 0)
+    )));
+
+    document.getElementById('status').innerText = 'Saving…';
+
+    fetch('/api/save', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        initData: window.Telegram?.WebApp?.initData || '',
+        checkin: {...checkin, soma}
+      })
+    })
+    .then(r => r.text().then(t => ({ok:r.ok, t})))
+    .then(({ok,t}) => {
+      if(!ok){
+        document.getElementById('status').innerText = 'Error: ' + t;
+        return;
+      }
+      document.getElementById('status').innerText = 'Saved ✅';
+      document.getElementById('checkin').style.display='none';
+      document.getElementById('today').style.display='block';
+      location.reload();
+    })
+    .catch(() => {
+      document.getElementById('status').innerText = 'Network error';
+    });
+  ">
+  Save check-in
+</button>
     </div>
     <div class="muted" id="status" style="margin-top:8px;"></div>
   </div>
@@ -139,7 +188,6 @@ window.__openCheckin = () => {
     }
   }
 
-  document.getElementById("save").onclick = async () => {
     const status = document.getElementById("status");
     status.textContent = "Saving…";
 
