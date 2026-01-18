@@ -29,10 +29,14 @@ function validateTelegramInitData(initData, botToken) {
 
 export default async function handler(req, res) {
   try {
-    if (req.method !== "POST") return res.status(405).send("Method not allowed");
+    if (req.method !== "POST") {
+      return res.status(405).send("Method not allowed");
+    }
 
     const { initData, checkin } = req.body || {};
-    if (!initData || !checkin) return res.status(400).send("Missing initData/checkin");
+    if (!initData || !checkin) {
+      return res.status(400).send("Missing initData/checkin");
+    }
 
     const BOT_TOKEN = process.env.BOT_TOKEN;
     const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -45,7 +49,9 @@ export default async function handler(req, res) {
     }
 
     const v = validateTelegramInitData(initData, BOT_TOKEN);
-    if (!v.ok) return res.status(401).send(v.reason);
+    if (!v.ok) {
+      return res.status(401).send(v.reason);
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -61,10 +67,13 @@ export default async function handler(req, res) {
     };
 
     const { error } = await supabase.from("checkins").insert(row);
-    if (error) return res.status(500).send("Supabase: " + error.message);
+    if (error) {
+      return res.status(500).send("Supabase: " + error.message);
+    }
 
     return res.status(200).send("ok");
-  } catch (err) {
-    return res.status(500).send(err?.stack || String(err));
+  } catch (e) {
+    // 🔥 ВАЖНО: теперь ты увидишь реальную ошибку, а не FUNCTION_INVOCATION_FAILED
+    return res.status(500).send(e?.stack || String(e));
   }
 }
